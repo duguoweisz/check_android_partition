@@ -1,0 +1,2 @@
+# check_android_partition
+static_check_android_partition_content
