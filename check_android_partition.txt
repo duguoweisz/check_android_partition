@@ -1,0 +1,50 @@
+*******************************************************************************
+如何静态查看Android的分区内容
+*******************************************************************************
+
+cd out/host/linux-x86/bin/
+
+*******************************************************************************
+查看boot.img的文件信息
+*******************************************************************************
+$ cp out/target/product/xxx/boot.img .
+$ file boot.img
+boot.img: Android bootimg, kernel (0x15e9bf), ramdisk (0x630), cmdline (N2)
+
+$ ./unpack_bootimg --boot_img boot.img --out out
+$ cd out
+$ ls
+boot_signature kernel ramdisk verity_key
+查看ramdisk的内容：
+$ lsinitramfs ramdisk
+...此处会显示出ramdisk的内容
+$ file ramdisk
+ramdisk: gzip compressed data, from Unix
+解压ramdisk的内容：
+$ gzip -cd ./ramdisk | cpio -i
+
+查看vendor_boot.img的相关信息，同boot.img
+cp out/target/product/xxx/vendor_boot.img .
+unpack_bootimg --boot_img vendor_boot.img --out vendor_out
+其中：
+lib/modules是firststage加载的一些kernel modules，此时尚未挂载system分区等，注意跟vendor/lib/modules/的区别
+first_stage_ramdisk/fstab.mt6983，之后切换root到first_stage_ramdisk
+*******************************************************************************
+查看system.img userdata.img的文件信息
+*******************************************************************************
+$ cp out/target/product/xxx/system.img .
+$ file system.img
+system.img: Android sparse image, version: 1.0, Total of 1067659 4096-byte output blocks in 75 input chunks.
+
+$ mkdir temp_dir
+将sparse的img转换成普通的img
+$ simg2img system.img system.img.raw
+将img挂载到临时目录下，因为img不是block device，所以需要-o loop还回设备
+$ sudo mount -t erofs system.img.raw temp_dir/ -o loop
+查看system分区的内容
+$ ls -l temp_dir
+root文件夹内容：out/target/product/xxx/root/(msmxxx,mi_hal)
+开机后/system目录的内容：ls -l /system
+因为firstage挂载system.img后，会switchroot到旧的system目录，并将当前system分区的挂载目录作为新的root fs
+$ sudo umount temp_dir
+
